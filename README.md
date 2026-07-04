@@ -378,6 +378,116 @@ The zero-action policy achieved zero control cost, but its final distance to the
 
 This indicates that the modified policy did not simply learn to stay still. Instead, it learned a more conservative but still effective reaching behavior with much smaller control actions.
 
+## From Reacher to Locomotion: Hopper-v5 Extension
+
+To connect the reaching-control experiment with locomotion control, this project also includes a PPO baseline experiment on `Hopper-v5`.
+
+Compared with `Reacher-v5`, `Hopper-v5` changes the control objective from end-effector target reaching to forward locomotion. Instead of moving a robotic arm tip toward a target point, the agent must control a one-legged robot to move forward while maintaining a healthy body posture and avoiding excessive control effort.
+
+### Environment Comparison
+
+| Environment | Task Type | Observation Dim | Action Dim | Main Objective |
+|---|---:|---:|---:|---|
+| Reacher-v5 | Target reaching | 10 | 2 | Move end-effector close to target |
+| Hopper-v5 | Locomotion | 11 | 3 | Move forward while staying upright |
+
+For `Hopper-v5`, the checked environment spaces are:
+
+```text
+Observation space: Box(-inf, inf, (11,), float64)
+Action space: Box(-1.0, 1.0, (3,), float32)
+```
+
+The action is a 3-dimensional continuous control input for the Hopper robot's actuated joints.
+
+### Locomotion Reward Design
+
+The reward structure of `Hopper-v5` is different from that of `Reacher-v5`.
+
+For `Reacher-v5`, the reward mainly focuses on distance minimization and control cost:
+
+```text
+reward = reward_dist + reward_ctrl
+```
+
+For `Hopper-v5`, the reward is more related to locomotion:
+
+```text
+reward = reward_forward + reward_survive + reward_ctrl
+```
+
+where:
+
+```text
+reward_forward = reward for forward velocity
+reward_survive = alive / healthy-state bonus
+reward_ctrl    = control cost penalty
+```
+
+This reflects common locomotion reward-design principles:
+
+- **forward velocity reward** encourages the robot to move forward;
+- **survival / alive bonus** encourages the robot to remain healthy and avoid falling;
+- **control cost** discourages unnecessarily large control actions;
+- **episode length** indirectly reflects stability, because the episode ends when the robot falls or becomes unhealthy.
+
+This is different from target-reaching tasks, where the main objective is spatial accuracy between the end-effector and the target.
+
+### Hopper-v5 PPO Training Result
+
+A PPO baseline was trained on `Hopper-v5` for 300,000 timesteps.
+
+Final evaluation result over 20 episodes:
+
+```text
+Mean reward over 20 episodes: 1977.979
+Std reward over 20 episodes: 419.990
+```
+
+The training curves show that both episode reward and episode length increased during training. This indicates that PPO learned a preliminary but meaningful locomotion behavior.
+
+![Hopper Reward Curve](figures/hopper_reward_curve.png)
+
+![Hopper Episode Length Curve](figures/hopper_episode_length_curve.png)
+
+### Hopper Policy Rollout
+
+The trained Hopper policy was visualized using MuJoCo rollout.
+
+Example rollout results:
+
+```text
+Episode 1 | seed = 200 | steps = 523 | reward = 1625.893 | forward_reward = 1104.665 | survive_reward = 522.000 | ctrl_reward = -0.771 | final_x = 8.839 | final_x_velocity = 3.895
+Episode 2 | seed = 201 | steps = 513 | reward = 1588.836 | forward_reward = 1077.604 | survive_reward = 512.000 | ctrl_reward = -0.767 | final_x = 8.626 | final_x_velocity = 4.024
+Episode 3 | seed = 202 | steps = 702 | reward = 2159.134 | forward_reward = 1459.182 | survive_reward = 701.000 | ctrl_reward = -1.047 | final_x = 11.672 | final_x_velocity = 4.560
+```
+
+The trained policy survived for several hundred simulation steps and moved forward by around 8 to 12 meters in the tested episodes. This suggests that the PPO policy learned a meaningful forward locomotion behavior, although the gait is still not fully optimized or guaranteed to be robust.
+
+### Summary: Reaching vs Locomotion
+
+This extension highlights how reward design changes across robotic control tasks.
+
+`Reacher-v5` focuses on:
+
+```text
+target distance
+control cost
+action smoothness
+```
+
+`Hopper-v5` focuses on:
+
+```text
+forward velocity
+alive bonus
+healthy-state maintenance
+control cost
+stability
+```
+
+Therefore, reaching tasks emphasize spatial accuracy, while locomotion tasks emphasize forward progress, balance, energy efficiency, and robustness.
+
 ---
 
 ## Key Observations
@@ -388,7 +498,8 @@ This indicates that the modified policy did not simply learn to stay still. Inst
 4. Under the same evaluation seeds, the modified-reward policy achieved better original reward and much lower action magnitude.
 5. The zero-action sanity check confirmed that the modified policy was not simply staying still.
 6. The modified-reward policy learned a more conservative control behavior while still improving target-reaching performance.
-
+7. Hopper-v5 extends the project from reaching control to locomotion control.
+8. Locomotion reward design introduces forward velocity reward, alive bonus, healthy-state maintenance, and episode-length-based stability analysis.
 ---
 
 ## Limitations
